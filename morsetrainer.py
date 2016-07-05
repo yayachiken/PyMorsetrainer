@@ -22,7 +22,7 @@ along with PyMorsetrainer.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 from threading import Thread
 import random
-from PyQt5.Qt import Qt
+from PyQt5.Qt import Qt, QSettings
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QWidget, QApplication, QMainWindow, QAction,
                              QTextEdit, QLineEdit, QLabel, QGridLayout,
@@ -36,10 +36,17 @@ KOCH_LETTERS = "KMURESNAPTLWI.JZ=FOY,VG5/Q92H38B?47C1D60X"
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        self.lesson = 1
+        self.settings = QSettings("yayachiken", "PyMorsetrainer")
+        if self.settings.value("currentLesson") is not None:
+            self.lesson = int(self.settings.value("currentLesson"))
+        else:
+            self.lesson = 1
+            self.settings.setValue("currentLesson", 1)
+        
         self.requireNewExercise = False
         self.mp = None
         self.thread = None
+
         super().__init__()
         self.initUI()
         self.generateExercise()
@@ -83,6 +90,7 @@ class MainWindow(QMainWindow):
         lessonCombo.addItem("1 - K M")
         for lesson in range(2, len(KOCH_LETTERS)):
             lessonCombo.addItem(str(lesson) + " - " + KOCH_LETTERS[lesson])
+        lessonCombo.setCurrentIndex(self.lesson-1)
         lessonCombo.currentIndexChanged.connect(self.newLessonSelected)
         
         lessonIdLabel = QLabel("Lesson:")
@@ -114,6 +122,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('PyMorsetrainer')
         self.show()
         
+    def closeEvent(self, event):
+        self.stopPlaying()
+        
         
     def playExercise(self):
         if self.requireNewExercise == True:
@@ -130,6 +141,7 @@ class MainWindow(QMainWindow):
     
     def newLessonSelected(self, comboId):
         self.lesson = comboId+1
+        self.settings.setValue("currentLesson", self.lesson)
         self.lessonLabel.setText(' '.join(KOCH_LETTERS[:self.lesson+1]))
         self.requireNewExercise = True
         
