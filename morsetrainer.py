@@ -141,7 +141,7 @@ class MainWindow(QMainWindow):
         print(self.morse_solution)
         
     def checkInput(self):
-        self.evalWindow = EvaluationWindow(self.receivedTextEdit.toPlainText(), self.morse_solution)
+        self.evalWindow = EvaluationWindow(self.receivedTextEdit.toPlainText().upper(), self.morse_solution)
         self.evalWindow.show()
         self.requireNewExercise = True
         self.receivedTextEdit.clear()
