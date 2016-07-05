@@ -24,11 +24,11 @@ from morselib import MorsePlayer, MorseCode
 from threading import Thread
 import random
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QTextEdit, QLineEdit, QLabel, QGridLayout, qApp, QPushButton, QHBoxLayout, QComboBox
+from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QTextEdit, QLineEdit, QLabel, QGridLayout, qApp, QPushButton, QHBoxLayout, QVBoxLayout,  QComboBox
 
 KOCH_LETTERS = "KMURESNAPTLWI.JZ=FOY,VG5/Q92H38B?47C1D60X"
 
-class MainWindow(QWidget):
+class MainWindow(QMainWindow):
     def __init__(self):
         self.lesson = 1
         self.requireNewExercise = True
@@ -38,16 +38,19 @@ class MainWindow(QWidget):
         self.initUI()
         
     def initUI(self):
+        
+        self.centralWidget = QWidget()
 
-        receivedTextEdit = QTextEdit()  
+        self.receivedTextEdit = QTextEdit()  
         monospaceFont = QFont("Monospace")
         monospaceFont.setStyleHint(QFont.Monospace)
         
-        playExerciseButton = QPushButton("Play Exercise Text")
+        playExerciseButton = QPushButton("Play exercise text")
         playExerciseButton.clicked.connect(self.playExercise)
-        stopButton = QPushButton("Stop Playing")
+        stopButton = QPushButton("Stop playing")
         stopButton.clicked.connect(self.stopPlaying)
-        validateButton = QPushButton("Check Input")
+        validateButton = QPushButton("Check input / Generate next exercise")
+        validateButton.clicked.connect(self.checkInput)
         self.wpmLineEdit = QLineEdit("20")
         wpmLabel = QLabel("WPM")
         self.ewpmLineEdit = QLineEdit("12")
@@ -73,7 +76,7 @@ class MainWindow(QWidget):
         
         grid = QGridLayout()
         grid.setSpacing(10)
-        grid.addWidget(receivedTextEdit, 1, 1, 7, 1)
+        grid.addWidget(self.receivedTextEdit, 1, 1, 7, 1)
         grid.addWidget(playExerciseButton, 1, 2, 1, 2)
         grid.addWidget(stopButton, 2, 2, 1, 2)
         grid.addWidget(validateButton, 3, 2, 1, 2)
@@ -89,8 +92,8 @@ class MainWindow(QWidget):
         
         
 
-        
-        self.setLayout(grid)
+        self.centralWidget.setLayout(grid)
+        self.setCentralWidget(self.centralWidget)
         
         
         self.setWindowTitle('PyMorsetrainer')
@@ -132,8 +135,56 @@ class MainWindow(QWidget):
         self.requireNewExercise = False
         self.morse_solution = mc.get_morse_text()
         print(self.morse_solution)
+        
+    def checkInput(self):
+        self.evalWindow = EvaluationWindow(self.receivedTextEdit.toPlainText(), self.morse_solution)
+        self.evalWindow.show()
+        self.requireNewExercise = True
+        self.receivedTextEdit.clear()
+        
+        
+        
+class EvaluationWindow(QWidget):
+    def __init__(self, inputText, solutionText):
+        self.inputText = inputText
+        self.solutionText = solutionText
+        super(EvaluationWindow, self).__init__()
+        self.initUI()
+        
+    def initUI(self):
+        inputGroups = self.inputText.split()
+        solutionGroups = self.solutionText.split()
+        numLetters = 0.0
+        numErrors = 0.0
+        for idx, _ in enumerate(solutionGroups):
+            numLetters += len(solutionGroups[idx])
+            try:
+                numErrors += self.levenshtein(solutionGroups[idx], inputGroups[idx])
+            except(IndexError):
+                numErrors += len(solutionGroups[idx])
+        percentage = numErrors / numLetters * 100.0
+        errorLabel = QLabel("Error count (Levenshtein): %02.2f%%" % percentage)
+        errorLabel.show()
+        layout = QVBoxLayout()
+        layout.addWidget(errorLabel)
+        if percentage < 10.0:
+            successLabel = QLabel("Error rate lower than 10%! <br/> Proceed to next lesson!")
+            layout.addWidget(successLabel)
+        self.setLayout(layout)
+            
+        
                 
 
+    def levenshtein(self, a, b):
+        return self.do_levenshtein(a, b, len(a), len(b))
+
+    def do_levenshtein(self, a, b, i, j):
+        if 0 in (i,j):
+            return max(i,j)
+        return min(self.do_levenshtein(a, b, i-1, j  ) + 1,
+                   self.do_levenshtein(a, b, i,   j-1) + 1,
+                   self.do_levenshtein(a, b, i-1, j-1) + (1 if a[i-1] != b[j-1] else 0))
+        
 
 
 if __name__ == "__main__":
