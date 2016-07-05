@@ -20,22 +20,25 @@ along with PyMorsetrainer.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import sys
-from morselib import MorsePlayer, MorseCode
 from threading import Thread
 import random
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QTextEdit, QLineEdit, QLabel, QGridLayout, qApp, QPushButton, QHBoxLayout, QVBoxLayout,  QComboBox
+
+from morselib import MorsePlayer, MorseCode
+from distance import global_matching, levenshtein
 
 KOCH_LETTERS = "KMURESNAPTLWI.JZ=FOY,VG5/Q92H38B?47C1D60X"
 
 class MainWindow(QMainWindow):
     def __init__(self):
         self.lesson = 1
-        self.requireNewExercise = True
+        self.requireNewExercise = False
         self.mp = None
         self.thread = None
         super().__init__()
         self.initUI()
+        self.generateExercise()
         
     def initUI(self):
         
@@ -44,6 +47,7 @@ class MainWindow(QMainWindow):
         self.receivedTextEdit = QTextEdit()  
         monospaceFont = QFont("Monospace")
         monospaceFont.setStyleHint(QFont.Monospace)
+        self.receivedTextEdit.setCurrentFont(monospaceFont)
         
         playExerciseButton = QPushButton("Play exercise text")
         playExerciseButton.clicked.connect(self.playExercise)
@@ -156,34 +160,32 @@ class EvaluationWindow(QWidget):
         solutionGroups = self.solutionText.split()
         numLetters = 0.0
         numErrors = 0.0
+        comparisonText = "<pre>SENT \t RECEIVED<br/>"
         for idx, _ in enumerate(solutionGroups):
             numLetters += len(solutionGroups[idx])
             try:
-                numErrors += self.levenshtein(solutionGroups[idx], inputGroups[idx])
+                numErrors += levenshtein(solutionGroups[idx], inputGroups[idx])
+                _, solutionMatched, inputMatched = global_matching(solutionGroups[idx], inputGroups[idx])
+                comparisonText += ("\n" + solutionMatched + " \t " + inputMatched + "<br/>")
             except(IndexError):
                 numErrors += len(solutionGroups[idx])
         percentage = numErrors / numLetters * 100.0
+        solutionLabel = QLabel(comparisonText + "</pre>")
         errorLabel = QLabel("Error count (Levenshtein): %02.2f%%" % percentage)
-        errorLabel.show()
         layout = QVBoxLayout()
+        layout.addWidget(solutionLabel)
         layout.addWidget(errorLabel)
         if percentage < 10.0:
             successLabel = QLabel("Error rate lower than 10%! <br/> Proceed to next lesson!")
             layout.addWidget(successLabel)
         self.setLayout(layout)
+        self.setWindowTitle('Evaluation')
             
         
                 
 
-    def levenshtein(self, a, b):
-        return self.do_levenshtein(a, b, len(a), len(b))
 
-    def do_levenshtein(self, a, b, i, j):
-        if 0 in (i,j):
-            return max(i,j)
-        return min(self.do_levenshtein(a, b, i-1, j  ) + 1,
-                   self.do_levenshtein(a, b, i,   j-1) + 1,
-                   self.do_levenshtein(a, b, i-1, j-1) + (1 if a[i-1] != b[j-1] else 0))
+
         
 
 
