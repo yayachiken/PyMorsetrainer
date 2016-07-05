@@ -166,7 +166,17 @@ class EvaluationWindow(QWidget):
             try:
                 numErrors += levenshtein(solutionGroups[idx], inputGroups[idx])
                 _, solutionMatched, inputMatched = global_matching(solutionGroups[idx], inputGroups[idx])
-                comparisonText += ("\n" + solutionMatched + " \t " + inputMatched + "<br/>")
+                colorSolution = ""
+                colorInput = ""
+                for idx, _ in enumerate(solutionMatched):
+                    if solutionMatched[idx] == inputMatched[idx]:
+                        colorSolution += "<span style='color: green'>" + solutionMatched[idx] + "</span>"
+                        colorInput += "<span style='color: green'>" + inputMatched[idx] + "</span>"
+                    else:
+                        colorSolution += "<span style='color: red'>" + solutionMatched[idx] + "</span>"
+                        colorInput += "<span style='color: red'>" + inputMatched[idx] + "</span>"
+                        
+                comparisonText += ("\n" + colorSolution + " \t " + colorInput + "<br/>")
             except(IndexError):
                 numErrors += len(solutionGroups[idx])
         percentage = numErrors / numLetters * 100.0
