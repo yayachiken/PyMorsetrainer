@@ -22,8 +22,12 @@ along with PyMorsetrainer.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 from threading import Thread
 import random
+from PyQt5.Qt import Qt
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QApplication, QMainWindow, QAction, QTextEdit, QLineEdit, QLabel, QGridLayout, qApp, QPushButton, QHBoxLayout, QVBoxLayout,  QComboBox
+from PyQt5.QtWidgets import (QWidget, QApplication, QMainWindow, QAction,
+                             QTextEdit, QLineEdit, QLabel, QGridLayout,
+                             qApp, QPushButton, QHBoxLayout, QVBoxLayout,
+                             QComboBox, QDialog)
 
 from morselib import MorsePlayer, MorseCode
 from distance import global_matching, levenshtein
@@ -41,42 +45,53 @@ class MainWindow(QMainWindow):
         self.generateExercise()
         
     def initUI(self):
-        
         self.centralWidget = QWidget()
+        self.setCentralWidget(self.centralWidget)
 
-        self.receivedTextEdit = QTextEdit()  
+        self.receivedTextEdit = QTextEdit()
+        self.receivedTextEdit.setAcceptRichText(False)
         monospaceFont = QFont("Monospace")
         monospaceFont.setStyleHint(QFont.Monospace)
-        self.receivedTextEdit.setCurrentFont(monospaceFont)
+        self.receivedTextEdit.setFont(monospaceFont)
         
         playExerciseButton = QPushButton("Play exercise text")
         playExerciseButton.clicked.connect(self.playExercise)
+        
         stopButton = QPushButton("Stop playing")
         stopButton.clicked.connect(self.stopPlaying)
+        
         validateButton = QPushButton("Check input / Generate next exercise")
         validateButton.clicked.connect(self.checkInput)
+        
         self.wpmLineEdit = QLineEdit("20")
         wpmLabel = QLabel("WPM")
-        self.ewpmLineEdit = QLineEdit("12")
+        
+        self.ewpmLineEdit = QLineEdit("15")
         ewpmLabel = QLabel("effective WPM")
+        
         self.freqLineEdit = QLineEdit("800")
         freqLabel = QLabel("Frequency (Hz)")
+        
         self.durationLineEdit = QLineEdit("1")
         durationLabel = QLabel("Duration (min)")
         
-        lessonGrid = QGridLayout()
+        lessonBox = QHBoxLayout()
+        lessonBox.setAlignment(Qt.AlignLeft)
+        
         lessonCombo = QComboBox()
+        lessonCombo.setMaximumWidth(75)
         lessonCombo.addItem("1 - K M")
         for lesson in range(2, len(KOCH_LETTERS)):
             lessonCombo.addItem(str(lesson) + " - " + KOCH_LETTERS[lesson])
         lessonCombo.currentIndexChanged.connect(self.newLessonSelected)
         
+        lessonIdLabel = QLabel("Lesson:")
+        lessonIdLabel.setMaximumWidth(50)
         
         self.lessonLabel = QLabel(' '.join(KOCH_LETTERS[:self.lesson+1]))
-        lessonGrid.addWidget(lessonCombo, 1, 1, 1, 1)
-        lessonGrid.addWidget(self.lessonLabel, 1, 2, 1, 1)
-        
-        
+        lessonBox.addWidget(lessonIdLabel)
+        lessonBox.addWidget(lessonCombo)
+        lessonBox.addWidget(self.lessonLabel)
         
         grid = QGridLayout()
         grid.setSpacing(10)
@@ -92,13 +107,9 @@ class MainWindow(QMainWindow):
         grid.addWidget(freqLabel, 6, 3)
         grid.addWidget(self.durationLineEdit, 7, 2)
         grid.addWidget(durationLabel, 7, 3)
-        grid.addLayout(lessonGrid, 8, 1, 1, 3)
+        grid.addLayout(lessonBox, 8, 1, 1, 3)
         
-        
-
         self.centralWidget.setLayout(grid)
-        self.setCentralWidget(self.centralWidget)
-        
         
         self.setWindowTitle('PyMorsetrainer')
         self.show()
@@ -142,13 +153,14 @@ class MainWindow(QMainWindow):
         
     def checkInput(self):
         self.evalWindow = EvaluationWindow(self.receivedTextEdit.toPlainText().upper(), self.morse_solution)
+        self.evalWindow.setModal(True)
         self.evalWindow.show()
         self.requireNewExercise = True
         self.receivedTextEdit.clear()
         
         
         
-class EvaluationWindow(QWidget):
+class EvaluationWindow(QDialog):
     def __init__(self, inputText, solutionText):
         self.inputText = inputText
         self.solutionText = solutionText
@@ -158,45 +170,50 @@ class EvaluationWindow(QWidget):
     def initUI(self):
         inputGroups = self.inputText.split()
         solutionGroups = self.solutionText.split()
+        
         numLetters = 0.0
         numErrors = 0.0
-        comparisonText = "<pre>SENT \t RECEIVED<br/>"
         for idx, _ in enumerate(solutionGroups):
+            if idx >= len(inputGroups):
+                inputGroups.append("")
             numLetters += len(solutionGroups[idx])
-            try:
-                numErrors += levenshtein(solutionGroups[idx], inputGroups[idx])
-                _, solutionMatched, inputMatched = global_matching(solutionGroups[idx], inputGroups[idx])
-                colorSolution = ""
-                colorInput = ""
-                for idx, _ in enumerate(solutionMatched):
-                    if solutionMatched[idx] == inputMatched[idx]:
-                        colorSolution += "<span style='color: green'>" + solutionMatched[idx] + "</span>"
-                        colorInput += "<span style='color: green'>" + inputMatched[idx] + "</span>"
-                    else:
-                        colorSolution += "<span style='color: red'>" + solutionMatched[idx] + "</span>"
-                        colorInput += "<span style='color: red'>" + inputMatched[idx] + "</span>"
-                        
-                comparisonText += ("\n" + colorSolution + " \t " + colorInput + "<br/>")
-            except(IndexError):
-                numErrors += len(solutionGroups[idx])
+            numErrors += levenshtein(solutionGroups[idx], inputGroups[idx])                        
         percentage = numErrors / numLetters * 100.0
-        solutionLabel = QLabel(comparisonText + "</pre>")
+        
+        solutionLabel = QLabel(self.createEvaluationRichText(solutionGroups, inputGroups))
         errorLabel = QLabel("Error count (Levenshtein): %02.2f%%" % percentage)
+        
         layout = QVBoxLayout()
         layout.addWidget(solutionLabel)
         layout.addWidget(errorLabel)
+        
         if percentage < 10.0:
             successLabel = QLabel("Error rate lower than 10%! <br/> Proceed to next lesson!")
             layout.addWidget(successLabel)
+        
         self.setLayout(layout)
         self.setWindowTitle('Evaluation')
-            
-        
-                
-
-
-
-        
+    
+    def createEvaluationRichText(self, solutionGroups, inputGroups):
+        richText = "<table align='center'><tr><td align='center'><pre>SENT</pre></td><td align='center'><pre>RECEIVED</pre></t></tr>"
+        for idx, solutionGroup in enumerate(solutionGroups):
+            richText += "<tr>"
+            if idx >= len(inputGroups):
+                inputGroups.append("")
+            _, solutionMatched, inputMatched = global_matching(solutionGroups[idx], inputGroups[idx])
+            colorSolution, colorInput = "", ""
+            for idx, _ in enumerate(solutionMatched):
+                if solutionMatched[idx] == inputMatched[idx]:
+                    colorSolution += "<span style='color: green'>" + solutionMatched[idx] + "</span>"
+                    colorInput += "<span style='color: green'>" + inputMatched[idx] + "</span>"
+                else:
+                    colorSolution += "<span style='color: red'>" + solutionMatched[idx] + "</span>"
+                    colorInput += "<span style='color: red'>" + inputMatched[idx] + "</span>"
+            richText += "<td align='center'><pre>" + colorSolution + "</pre></td><td align='center'><pre>" + colorInput + "</pre></td>"
+            richText += "</tr>"
+        richText += "</table>"
+        return richText
+              
 
 
 if __name__ == "__main__":
