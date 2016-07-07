@@ -132,6 +132,8 @@ class MainWindow(QMainWindow):
         wpm = int(self.wpmLineEdit.text())
         effectiveWpm = int(self.ewpmLineEdit.text())
         frequency = int(self.freqLineEdit.text())
+        if self.mp is not None:
+            self.mp.shutdown()
         self.mp = MorsePlayer(self.morse_solution, wpm, effectiveWpm, frequency)
         self.mp.start()
     
