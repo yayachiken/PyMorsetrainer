@@ -93,6 +93,7 @@ class MainWindow(QMainWindow):
         
         lessonCombo = QComboBox()
         lessonCombo.setMaximumWidth(75)
+        lessonCombo.setStyleSheet("combobox-popup: 0;")
         lessonCombo.addItem("1 - K M")
         for lesson in range(2, len(KOCH_LETTERS)):
             lessonCombo.addItem(str(lesson) + " - " + KOCH_LETTERS[lesson])
