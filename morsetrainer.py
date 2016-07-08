@@ -20,6 +20,7 @@ along with PyMorsetrainer.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import sys
+import functools
 from threading import Thread
 import random
 from PyQt5.Qt import Qt, QSettings
@@ -37,15 +38,17 @@ KOCH_LETTERS = "KMURESNAPTLWI.JZ=FOY,VG5/Q92H38B?47C1D60X"
 class MainWindow(QMainWindow):
     def __init__(self):
         self.settings = QSettings("yayachiken", "PyMorsetrainer")
-        if self.settings.value("currentLesson") is not None:
-            self.lesson = int(self.settings.value("currentLesson"))
-        else:
-            self.lesson = 1
-            self.settings.setValue("currentLesson", 1)
+        if not self.settings.allKeys():
+            print("Initializing application settings...")
+            self.settings.setValue("currentLesson", "1")
+            self.settings.setValue("wpm", "20")
+            self.settings.setValue("effectiveWpm", "15")
+            self.settings.setValue("frequency", "800")
+            self.settings.setValue("duration", "1")
         
         self.requireNewExercise = False
         self.mp = None
-        self.thread = None
+        self.lessonButtons = []
 
         super().__init__()
         self.initUI()
@@ -70,36 +73,40 @@ class MainWindow(QMainWindow):
         validateButton = QPushButton("Check input / Generate next exercise")
         validateButton.clicked.connect(self.checkInput)
         
-        self.wpmLineEdit = QLineEdit("20")
+        self.wpmLineEdit = QLineEdit(self.settings.value("wpm"))
+        self.wpmLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.wpmLineEdit, "wpm"))
         wpmLabel = QLabel("WPM")
         
-        self.ewpmLineEdit = QLineEdit("15")
+        self.ewpmLineEdit = QLineEdit(self.settings.value("effectiveWpm"))
+        self.ewpmLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.ewpmLineEdit, "effectiveWpm"))
         ewpmLabel = QLabel("effective WPM")
         
-        self.freqLineEdit = QLineEdit("800")
+        self.freqLineEdit = QLineEdit(self.settings.value("frequency"))
+        self.freqLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.freqLineEdit, "frequency"))
         freqLabel = QLabel("Frequency (Hz)")
         
-        self.durationLineEdit = QLineEdit("1")
+        self.durationLineEdit = QLineEdit(self.settings.value("duration"))
+        self.durationLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.durationLineEdit, "duration"))
         durationLabel = QLabel("Duration (min)")
         
-        lessonBox = QHBoxLayout()
-        lessonBox.setAlignment(Qt.AlignLeft)
+        self.lessonGrid = QGridLayout()
         
         lessonCombo = QComboBox()
         lessonCombo.setMaximumWidth(75)
         lessonCombo.addItem("1 - K M")
         for lesson in range(2, len(KOCH_LETTERS)):
             lessonCombo.addItem(str(lesson) + " - " + KOCH_LETTERS[lesson])
-        lessonCombo.setCurrentIndex(self.lesson-1)
+        lessonCombo.setCurrentIndex(int(self.settings.value("currentLesson"))-1)
         lessonCombo.currentIndexChanged.connect(self.newLessonSelected)
         
         lessonIdLabel = QLabel("Lesson:")
         lessonIdLabel.setMaximumWidth(50)
         
-        self.lessonLabel = QLabel(' '.join(KOCH_LETTERS[:self.lesson+1]))
+        lessonBox = QHBoxLayout()
         lessonBox.addWidget(lessonIdLabel)
         lessonBox.addWidget(lessonCombo)
-        lessonBox.addWidget(self.lessonLabel)
+        self.lessonGrid.addLayout(lessonBox, 0, 0, 1, 12)
+        self.createLessonLetterButtons(self.lessonGrid)
         
         grid = QGridLayout()
         grid.setSpacing(10)
@@ -115,7 +122,7 @@ class MainWindow(QMainWindow):
         grid.addWidget(freqLabel, 6, 3)
         grid.addWidget(self.durationLineEdit, 7, 2)
         grid.addWidget(durationLabel, 7, 3)
-        grid.addLayout(lessonBox, 8, 1, 1, 3)
+        grid.addLayout(self.lessonGrid, 8, 1, 1, 3)
         
         self.centralWidget.setLayout(grid)
         
@@ -124,31 +131,52 @@ class MainWindow(QMainWindow):
         
     def closeEvent(self, event):
         self.stopPlaying()
+
+    def createLessonLetterButtons(self, parentGrid):
+        newButtonCount = int(self.settings.value("currentLesson")) + 1
+        oldButtonCount = len(self.lessonButtons)
+
+        if oldButtonCount > newButtonCount:
+            for button in self.lessonButtons[newButtonCount:]:
+                parentGrid.removeWidget(button)
+                button.deleteLater()
+            self.lessonButtons = self.lessonButtons[:newButtonCount]
+        else:
+            for idx, letter in enumerate(KOCH_LETTERS[oldButtonCount:newButtonCount]):
+                idx = idx + oldButtonCount
+                button = QPushButton(letter)
+                button.clicked.connect(functools.partial(self.playMorse, letter))
+                button.setMaximumWidth(20)
+                parentGrid.addWidget(button, 1 + int(idx / 12), int(idx % 12))
+                self.lessonButtons.append(button)
         
-        
+    def playMorse(self, text):
+        if self.mp is not None:
+            self.mp.shutdown()
+        wpm = int(self.settings.value("wpm"))
+        effectiveWpm = int(self.settings.value("effectiveWpm"))
+        frequency = int(self.settings.value("frequency"))
+        self.mp = MorsePlayer(text, wpm, effectiveWpm, frequency)
+        self.mp.start()
+
     def playExercise(self):
         if self.requireNewExercise == True:
             self.generateExercise()
-        wpm = int(self.wpmLineEdit.text())
-        effectiveWpm = int(self.ewpmLineEdit.text())
-        frequency = int(self.freqLineEdit.text())
-        if self.mp is not None:
-            self.mp.shutdown()
-        self.mp = MorsePlayer(self.morse_solution, wpm, effectiveWpm, frequency)
-        self.mp.start()
+        self.playMorse(self.morse_solution)
     
     def stopPlaying(self):
         if self.mp is not None:
             self.mp.shutdown()
     
     def newLessonSelected(self, comboId):
-        self.lesson = comboId+1
-        self.settings.setValue("currentLesson", self.lesson)
-        self.lessonLabel.setText(' '.join(KOCH_LETTERS[:self.lesson+1]))
+        newLesson = comboId + 1
+        self.settings.setValue("currentLesson", newLesson)
+        self.createLessonLetterButtons(self.lessonGrid)
         self.requireNewExercise = True
         
     def generateExercise(self):
-        letters = KOCH_LETTERS[:self.lesson+1]
+        lesson = int(self.settings.value("currentLesson"))
+        letters = KOCH_LETTERS[:lesson+1]
         wpm = int(self.wpmLineEdit.text())
         effectiveWpm = int(self.ewpmLineEdit.text())
         frequency = int(self.freqLineEdit.text())
@@ -171,6 +199,9 @@ class MainWindow(QMainWindow):
         self.evalWindow.show()
         self.requireNewExercise = True
         self.receivedTextEdit.clear()
+
+    def saveChangedText(self, inputField, settingName):
+        self.settings.setValue(settingName, inputField.text())
         
         
         
@@ -234,3 +265,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     mw = MainWindow()
     sys.exit(app.exec_())
+
