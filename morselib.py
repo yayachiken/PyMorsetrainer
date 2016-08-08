@@ -21,7 +21,6 @@ along with PyMorsetrainer.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
 import numpy
-from scipy.signal import butter, lfilter
 import pyaudio
 from threading import Thread
 
@@ -73,7 +72,7 @@ class MorseCode():
             if c == '#':
                 tones.append(self.__space(wpm, effective_wpm))
         # As a rule of thumb, the bandwidth of a CW signal is 4 * WPM in Hertz
-        return self.__lowpass_filter(numpy.concatenate(tones), frequency, cutoff=wpm*4).astype(numpy.float32)
+        return numpy.concatenate(tones).astype(numpy.float32)
     
     def tally_length_in_seconds(self, wpm, effective_wpm):
         length = 0
@@ -149,10 +148,12 @@ class MorseCode():
 
 
     def __dit(self, wpm, frequency):
-        return self.__sine(self.__dit_length(wpm), frequency, SAMPLE_RATE)
+        return numpy.multiply(self.__sine(self.__dit_length(wpm), frequency, SAMPLE_RATE), \
+                           self.__flank_mask(self.__dit_length(wpm)))
 
     def __dah(self, wpm, frequency):
-        return self.__sine(self.__dah_length(wpm), frequency, SAMPLE_RATE)
+        return numpy.multiply(self.__sine(self.__dah_length(wpm), frequency, SAMPLE_RATE), \
+                           self.__flank_mask(self.__dah_length(wpm)))
 
     def __dit_pause(self, wpm):
         return self.__pause(self.__dit_pause_length(wpm), SAMPLE_RATE)
@@ -171,14 +172,12 @@ class MorseCode():
     Simple band-pass filtering is used to avoid clicks.
     """
 
-    def __butterworth(self, cutoff, frequency):
-        lowcut = (frequency - cutoff/2) * 2.0 / SAMPLE_RATE
-        highcut = (frequency + cutoff/2) * 2.0 / SAMPLE_RATE
-        return butter(1, [lowcut, highcut], btype="band", analog=False)
-        
-    def __lowpass_filter(self, data, frequency, cutoff=100):
-        b, a = self.__butterworth(cutoff, frequency)
-        return lfilter(b, a, data)
+    def __flank_mask(self, length):
+        # 5 milli seconds decay time
+        decaysamples = int(SAMPLE_RATE * 0.005)
+        decaystart = numpy.arange(decaysamples) / float(decaysamples)
+        decayend = decaystart[::-1]
+        return numpy.concatenate((decaystart, numpy.ones(length*SAMPLE_RATE - 2*decaysamples), decayend))
 
     def __sine(self, length, frequency, rate=SAMPLE_RATE):
         length = int(length * rate)
