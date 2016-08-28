@@ -28,7 +28,7 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QWidget, QApplication, QMainWindow, QAction,
                              QTextEdit, QLineEdit, QLabel, QGridLayout,
                              qApp, QPushButton, QHBoxLayout, QVBoxLayout,
-                             QComboBox, QDialog)
+                             QComboBox, QDialog, QSizePolicy, QToolButton)
 
 from morselib import MorsePlayer, MorseCode
 from distance import global_matching, levenshtein
@@ -92,7 +92,6 @@ class MainWindow(QMainWindow):
         self.lessonGrid = QGridLayout()
         
         lessonCombo = QComboBox()
-        lessonCombo.setMaximumWidth(75)
         lessonCombo.setStyleSheet("combobox-popup: 0;")
         lessonCombo.addItem("1 - K M")
         for lesson in range(2, len(KOCH_LETTERS)):
@@ -101,31 +100,44 @@ class MainWindow(QMainWindow):
         lessonCombo.currentIndexChanged.connect(self.newLessonSelected)
         
         lessonIdLabel = QLabel("Lesson:")
-        lessonIdLabel.setMaximumWidth(50)
         
         lessonBox = QHBoxLayout()
         lessonBox.addWidget(lessonIdLabel)
         lessonBox.addWidget(lessonCombo)
-        self.lessonGrid.addLayout(lessonBox, 0, 0, 1, 12)
+        lessonBox.addStretch(-1)
+
         self.createLessonLetterButtons(self.lessonGrid)
         
-        grid = QGridLayout()
-        grid.setSpacing(10)
-        grid.addWidget(self.receivedTextEdit, 1, 1, 7, 1)
-        grid.addWidget(playExerciseButton, 1, 2, 1, 2)
-        grid.addWidget(stopButton, 2, 2, 1, 2)
-        grid.addWidget(validateButton, 3, 2, 1, 2)
-        grid.addWidget(self.wpmLineEdit, 4, 2)
-        grid.addWidget(wpmLabel, 4, 3)
-        grid.addWidget(self.ewpmLineEdit, 5, 2)
-        grid.addWidget(ewpmLabel, 5, 3)
-        grid.addWidget(self.freqLineEdit, 6, 2)
-        grid.addWidget(freqLabel, 6, 3)
-        grid.addWidget(self.durationLineEdit, 7, 2)
-        grid.addWidget(durationLabel, 7, 3)
-        grid.addLayout(self.lessonGrid, 8, 1, 1, 3)
+        mainLayout = QVBoxLayout()
+
+        inputAndParameters = QHBoxLayout()
+        parameterField = QVBoxLayout()
+        inputAndParameters.addWidget(self.receivedTextEdit, stretch=1)
+        self.receivedTextEdit.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding))
+        inputAndParameters.addLayout(parameterField, stretch=0)
+
+        parameterField.addWidget(playExerciseButton)
+        parameterField.addWidget(stopButton)
+        parameterField.addWidget(validateButton)
+
+        parameterGrid = QGridLayout()
+        parameterGrid.addWidget(self.wpmLineEdit, 0, 0)
+        parameterGrid.addWidget(wpmLabel, 0, 1)
+        parameterGrid.addWidget(self.ewpmLineEdit, 1, 0)
+        parameterGrid.addWidget(ewpmLabel, 1, 1)
+        parameterGrid.addWidget(self.freqLineEdit, 2, 0)
+        parameterGrid.addWidget(freqLabel, 2, 1)
+        parameterGrid.addWidget(self.durationLineEdit, 3, 0)
+        parameterGrid.addWidget(durationLabel, 3, 1)
+        parameterField.addLayout(parameterGrid)
+        parameterField.insertSpacing(-1, 15)
+        parameterField.addLayout(lessonBox)
+        parameterField.insertStretch(-1)
+
+        mainLayout.addLayout(inputAndParameters)
+        mainLayout.addLayout(self.lessonGrid)
         
-        self.centralWidget.setLayout(grid)
+        self.centralWidget.setLayout(mainLayout)
         
         self.setWindowTitle('PyMorsetrainer')
         self.show()
@@ -145,9 +157,13 @@ class MainWindow(QMainWindow):
         else:
             for idx, letter in enumerate(KOCH_LETTERS[oldButtonCount:newButtonCount]):
                 idx = idx + oldButtonCount
-                button = QPushButton(letter)
+                button = QToolButton()
+                button.setText(letter)
                 button.clicked.connect(functools.partial(self.playMorse, letter))
-                button.setMaximumWidth(20)
+                buttonPolicy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed, QSizePolicy.PushButton)
+                buttonPolicy.setHorizontalStretch(0)
+                button.setSizePolicy(buttonPolicy)
+                button.setMinimumWidth(5)
                 parentGrid.addWidget(button, 1 + int(idx / 12), int(idx % 12))
                 self.lessonButtons.append(button)
         
