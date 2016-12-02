@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         self.requireNewExercise = False
         self.mp = None
         self.lessonButtons = []
+        self.debug = False
 
         super().__init__()
         self.initUI()
@@ -208,7 +209,8 @@ class MainWindow(QMainWindow):
             mc.set_morse_text(mc.get_morse_text() + " " + new_word)
         self.requireNewExercise = False
         self.morse_solution = mc.get_morse_text()
-        print(self.morse_solution)
+        if self.debug:
+            print(self.morse_solution)
         
     def checkInput(self):
         self.evalWindow = EvaluationWindow(self.receivedTextEdit.toPlainText().upper(), self.morse_solution)
@@ -219,6 +221,9 @@ class MainWindow(QMainWindow):
 
     def saveChangedText(self, inputField, settingName):
         self.settings.setValue(settingName, inputField.text())
+
+    def enableDebugMode():
+        self.debug = True
         
         
         
@@ -275,11 +280,14 @@ class EvaluationWindow(QDialog):
             richText += "</tr>"
         richText += "</table>"
         return richText
-              
+
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     mw = MainWindow()
+    if "--debug" in app.arguments():
+        print("Debug active...")
+        mw.enableDebugMode()
     sys.exit(app.exec_())
 
