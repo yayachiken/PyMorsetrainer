@@ -177,7 +177,7 @@ class MorseCode():
         decaysamples = int(SAMPLE_RATE * 0.005)
         decaystart = numpy.arange(decaysamples) / float(decaysamples)
         decayend = decaystart[::-1]
-        return numpy.concatenate((decaystart, numpy.ones(length*SAMPLE_RATE - 2*decaysamples), decayend))
+        return numpy.concatenate((decaystart, numpy.ones(int(length*SAMPLE_RATE - 2*decaysamples)), decayend))
 
     def __sine(self, length, frequency, rate=SAMPLE_RATE):
         length = int(length * rate)
