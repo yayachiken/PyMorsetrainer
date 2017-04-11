@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """
 (C) 2016 David Kolossa
 
@@ -30,8 +28,8 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QMainWindow, QAction,
                              qApp, QPushButton, QHBoxLayout, QVBoxLayout,
                              QComboBox, QDialog, QSizePolicy, QToolButton)
 
-from morselib import MorsePlayer, MorseCode
-from distance import global_matching, levenshtein
+from pymorsetrainer.morselib import MorsePlayer, MorseCode
+from pymorsetrainer.distance import global_matching, levenshtein
 
 KOCH_LETTERS = "KMURESNAPTLWI.JZ=FOY,VG5/Q92H38B?47C1D60X"
 
@@ -281,13 +279,4 @@ class EvaluationWindow(QDialog):
         richText += "</table>"
         return richText
 
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    mw = MainWindow()
-    if "--debug" in app.arguments():
-        print("Debug active...")
-        mw.enableDebugMode()
-    sys.exit(app.exec_())
 
