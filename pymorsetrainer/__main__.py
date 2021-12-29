@@ -23,6 +23,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from pymorsetrainer.pymorsetrainer import MainWindow
 
+
 def main():
     app = QApplication(sys.argv)
     mw = MainWindow()
@@ -31,6 +32,6 @@ def main():
         mw.enableDebugMode()
     return app.exec_()
 
+
 if __name__ == "__main__":
     main()
-

@@ -23,15 +23,30 @@ from threading import Thread
 import random
 from PyQt5.Qt import Qt, QSettings
 from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (QWidget, QApplication, QMainWindow, QAction,
-                             QTextEdit, QLineEdit, QLabel, QGridLayout,
-                             qApp, QPushButton, QHBoxLayout, QVBoxLayout,
-                             QComboBox, QDialog, QSizePolicy, QToolButton)
+from PyQt5.QtWidgets import (
+    QWidget,
+    QApplication,
+    QMainWindow,
+    QAction,
+    QTextEdit,
+    QLineEdit,
+    QLabel,
+    QGridLayout,
+    qApp,
+    QPushButton,
+    QHBoxLayout,
+    QVBoxLayout,
+    QComboBox,
+    QDialog,
+    QSizePolicy,
+    QToolButton,
+)
 
 from pymorsetrainer.morselib import MorsePlayer, MorseCode
 from pymorsetrainer.distance import global_matching, levenshtein
 
 KOCH_LETTERS = "KMURESNAPTLWI.JZ=FOY,VG5/Q92H38B?47C1D60X"
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -42,8 +57,8 @@ class MainWindow(QMainWindow):
             self.settings.setValue("wpm", "20")
             self.settings.setValue("effectiveWpm", "15")
             self.settings.setValue("frequency", "800")
-            self.settings.setValue("duration", "1")
-        
+            self.settings.setValue("duration", "60")
+
         self.requireNewExercise = False
         self.mp = None
         self.lessonButtons = []
@@ -52,7 +67,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.initUI()
         self.generateExercise()
-        
+
     def initUI(self):
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
@@ -62,57 +77,67 @@ class MainWindow(QMainWindow):
         monospaceFont = QFont("Monospace")
         monospaceFont.setStyleHint(QFont.Monospace)
         self.receivedTextEdit.setFont(monospaceFont)
-        
+
         playExerciseButton = QPushButton("Play exercise text")
         playExerciseButton.clicked.connect(self.playExercise)
-        
+
         stopButton = QPushButton("Stop playing")
         stopButton.clicked.connect(self.stopPlaying)
-        
+
         validateButton = QPushButton("Check input / Generate next exercise")
         validateButton.clicked.connect(self.checkInput)
-        
+
         self.wpmLineEdit = QLineEdit(self.settings.value("wpm"))
-        self.wpmLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.wpmLineEdit, "wpm"))
+        self.wpmLineEdit.textChanged.connect(
+            functools.partial(self.saveChangedText, self.wpmLineEdit, "wpm")
+        )
         wpmLabel = QLabel("WPM")
-        
+
         self.ewpmLineEdit = QLineEdit(self.settings.value("effectiveWpm"))
-        self.ewpmLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.ewpmLineEdit, "effectiveWpm"))
+        self.ewpmLineEdit.textChanged.connect(
+            functools.partial(self.saveChangedText, self.ewpmLineEdit, "effectiveWpm")
+        )
         ewpmLabel = QLabel("effective WPM")
-        
+
         self.freqLineEdit = QLineEdit(self.settings.value("frequency"))
-        self.freqLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.freqLineEdit, "frequency"))
+        self.freqLineEdit.textChanged.connect(
+            functools.partial(self.saveChangedText, self.freqLineEdit, "frequency")
+        )
         freqLabel = QLabel("Frequency (Hz)")
-        
+
         self.durationLineEdit = QLineEdit(self.settings.value("duration"))
-        self.durationLineEdit.textChanged.connect(functools.partial(self.saveChangedText, self.durationLineEdit, "duration"))
-        durationLabel = QLabel("Duration (min)")
-        
+        self.durationLineEdit.textChanged.connect(
+            functools.partial(self.saveChangedText, self.durationLineEdit, "duration")
+        )
+        durationLabel = QLabel("Duration (seconds)")
+
         self.lessonGrid = QGridLayout()
-        
+
         lessonCombo = QComboBox()
         lessonCombo.setStyleSheet("combobox-popup: 0;")
         lessonCombo.addItem("1 - K M")
         for lesson in range(2, len(KOCH_LETTERS)):
             lessonCombo.addItem(str(lesson) + " - " + KOCH_LETTERS[lesson])
-        lessonCombo.setCurrentIndex(int(self.settings.value("currentLesson"))-1)
+        lessonCombo.setCurrentIndex(int(self.settings.value("currentLesson")) - 1)
         lessonCombo.currentIndexChanged.connect(self.newLessonSelected)
-        
+
         lessonIdLabel = QLabel("Lesson:")
-        
+
         lessonBox = QHBoxLayout()
         lessonBox.addWidget(lessonIdLabel)
         lessonBox.addWidget(lessonCombo)
         lessonBox.addStretch(-1)
 
         self.createLessonLetterButtons(self.lessonGrid)
-        
+
         mainLayout = QVBoxLayout()
 
         inputAndParameters = QHBoxLayout()
         parameterField = QVBoxLayout()
         inputAndParameters.addWidget(self.receivedTextEdit, stretch=1)
-        self.receivedTextEdit.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding))
+        self.receivedTextEdit.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        )
         inputAndParameters.addLayout(parameterField, stretch=0)
 
         parameterField.addWidget(playExerciseButton)
@@ -135,12 +160,12 @@ class MainWindow(QMainWindow):
 
         mainLayout.addLayout(inputAndParameters)
         mainLayout.addLayout(self.lessonGrid)
-        
+
         self.centralWidget.setLayout(mainLayout)
-        
-        self.setWindowTitle('PyMorsetrainer')
+
+        self.setWindowTitle("PyMorsetrainer")
         self.show()
-        
+
     def closeEvent(self, event):
         self.stopPlaying()
 
@@ -159,13 +184,15 @@ class MainWindow(QMainWindow):
                 button = QToolButton()
                 button.setText(letter)
                 button.clicked.connect(functools.partial(self.playMorse, letter))
-                buttonPolicy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed, QSizePolicy.PushButton)
+                buttonPolicy = QSizePolicy(
+                    QSizePolicy.Minimum, QSizePolicy.Fixed, QSizePolicy.PushButton
+                )
                 buttonPolicy.setHorizontalStretch(0)
                 button.setSizePolicy(buttonPolicy)
                 button.setMinimumWidth(5)
                 parentGrid.addWidget(button, 1 + int(idx / 12), int(idx % 12))
                 self.lessonButtons.append(button)
-        
+
     def playMorse(self, text):
         if self.mp is not None:
             self.mp.shutdown()
@@ -179,39 +206,41 @@ class MainWindow(QMainWindow):
         if self.requireNewExercise == True:
             self.generateExercise()
         self.playMorse(self.morse_solution)
-    
+
     def stopPlaying(self):
         if self.mp is not None:
             self.mp.shutdown()
-    
+
     def newLessonSelected(self, comboId):
         newLesson = comboId + 1
         self.settings.setValue("currentLesson", newLesson)
         self.createLessonLetterButtons(self.lessonGrid)
         self.requireNewExercise = True
-        
+
     def generateExercise(self):
         lesson = int(self.settings.value("currentLesson"))
-        letters = KOCH_LETTERS[:lesson+1]
+        letters = KOCH_LETTERS[: lesson + 1]
         wpm = int(self.wpmLineEdit.text())
         effectiveWpm = int(self.ewpmLineEdit.text())
         frequency = int(self.freqLineEdit.text())
         duration = int(self.durationLineEdit.text())
-        
+
         mc = MorseCode("")
-        
-        while mc.tally_length_in_seconds(wpm, effectiveWpm) < duration * 60:
+
+        while mc.tally_length_in_seconds(wpm, effectiveWpm) < duration:
             new_word = ""
             for _ in range(0, 5):
-                new_word += (random.choice(letters))
+                new_word += random.choice(letters)
             mc.set_morse_text(mc.get_morse_text() + " " + new_word)
         self.requireNewExercise = False
         self.morse_solution = mc.get_morse_text()
         if self.debug:
             print(self.morse_solution)
-        
+
     def checkInput(self):
-        self.evalWindow = EvaluationWindow(self.receivedTextEdit.toPlainText().upper(), self.morse_solution)
+        self.evalWindow = EvaluationWindow(
+            self.receivedTextEdit.toPlainText().upper(), self.morse_solution
+        )
         self.evalWindow.setModal(True)
         self.evalWindow.show()
         self.requireNewExercise = True
@@ -222,61 +251,78 @@ class MainWindow(QMainWindow):
 
     def enableDebugMode():
         self.debug = True
-        
-        
-        
+
+
 class EvaluationWindow(QDialog):
     def __init__(self, inputText, solutionText):
         self.inputText = inputText
         self.solutionText = solutionText
         super(EvaluationWindow, self).__init__()
         self.initUI()
-        
+
     def initUI(self):
         inputGroups = self.inputText.split()
         solutionGroups = self.solutionText.split()
-        
+
         numLetters = 0.0
         numErrors = 0.0
         for idx, _ in enumerate(solutionGroups):
             if idx >= len(inputGroups):
                 inputGroups.append("")
             numLetters += len(solutionGroups[idx])
-            numErrors += levenshtein(solutionGroups[idx], inputGroups[idx])                        
+            numErrors += levenshtein(solutionGroups[idx], inputGroups[idx])
         percentage = numErrors / numLetters * 100.0
-        
-        solutionLabel = QLabel(self.createEvaluationRichText(solutionGroups, inputGroups))
+
+        solutionLabel = QLabel(
+            self.createEvaluationRichText(solutionGroups, inputGroups)
+        )
         errorLabel = QLabel("Error count (Levenshtein): %02.2f%%" % percentage)
-        
+
         layout = QVBoxLayout()
         layout.addWidget(solutionLabel)
         layout.addWidget(errorLabel)
-        
+
         if percentage < 10.0:
-            successLabel = QLabel("Error rate lower than 10%! <br/> Proceed to next lesson!")
+            successLabel = QLabel(
+                "Error rate lower than 10%! <br/> Proceed to next lesson!"
+            )
             layout.addWidget(successLabel)
-        
+
         self.setLayout(layout)
-        self.setWindowTitle('Evaluation')
-    
+        self.setWindowTitle("Evaluation")
+
     def createEvaluationRichText(self, solutionGroups, inputGroups):
         richText = "<table align='center'><tr><td align='center'><pre>SENT</pre></td><td align='center'><pre>RECEIVED</pre></t></tr>"
         for idx, solutionGroup in enumerate(solutionGroups):
             richText += "<tr>"
             if idx >= len(inputGroups):
                 inputGroups.append("")
-            _, solutionMatched, inputMatched = global_matching(solutionGroups[idx], inputGroups[idx])
+            _, solutionMatched, inputMatched = global_matching(
+                solutionGroups[idx], inputGroups[idx]
+            )
             colorSolution, colorInput = "", ""
             for idx, _ in enumerate(solutionMatched):
                 if solutionMatched[idx] == inputMatched[idx]:
-                    colorSolution += "<span style='color: green'>" + solutionMatched[idx] + "</span>"
-                    colorInput += "<span style='color: green'>" + inputMatched[idx] + "</span>"
+                    colorSolution += (
+                        "<span style='color: green'>" + solutionMatched[idx] + "</span>"
+                    )
+                    colorInput += (
+                        "<span style='color: green'>" + inputMatched[idx] + "</span>"
+                    )
                 else:
-                    colorSolution += "<span style='color: red'>" + solutionMatched[idx] + "</span>"
-                    colorInput += "<span style='color: red'>" + inputMatched[idx] + "</span>"
-            richText += "<td align='center'><pre>" + colorSolution + "</pre></td><td align='center'><pre>" + colorInput + "</pre></td>"
+                    colorSolution += (
+                        "<span style='color: red'>" + solutionMatched[idx] + "</span>"
+                    )
+                    colorInput += (
+                        "<span style='color: red'>" + inputMatched[idx] + "</span>"
+                    )
+            richText += (
+                "<td align='center'><pre>"
+                + colorSolution
+                + "</pre></td><td align='center'><pre>"
+                + colorInput
+                + "</pre></td>"
+            )
             richText += "</tr>"
         richText += "</table>"
         return richText
-
-

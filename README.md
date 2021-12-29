@@ -1,12 +1,19 @@
-A simple Morsetrainer written in Python for the Koch method with Farnsworth
-timing.
+A simple Morse code trainer written in Python for the Koch method with
+Farnsworth timing.
 
 Installation
 ------------
 
-This program requires Python 3 with PyQt5, PyAudio and Scipy installed.
+This program requires Python 3 with PyQt5, PySounddevice and Scipy installed.
+
 The recommended way to install these is by your distributions package manager
 or pip.
+
+For example, on Arch Linux you can use
+
+    pacman -S python-pyqt5 python-pysounddevice python-scipy
+
+to install the required dependencies.
 
 About the Koch method
 ---------------------
@@ -32,7 +39,7 @@ To allow training to drop to lower speeds, the Farnsworth timing was developed.
 In Farnsworth timing, the letters are unchanged, but the pauses between letters
 and words may be lengthened.
 
-At first, newe operators will only be required to distinguished between two
+At first, newer operators will only be required to distinguished between two
 characters of morse code. When they are able to copy a random stream of these
 two characters accurately (i.e. with 90% accuracy or larger), they have mastered
 these two letters. After that they can proceed to the next lesson, where another
